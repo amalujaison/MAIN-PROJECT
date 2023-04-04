@@ -4,7 +4,7 @@
 # from django.utils import timezone
 # from django import forms
 # Create your models here.
-from django.contrib.auth.models import _user_get_permissions
+from django.contrib.auth.models import _user_get_permissions, AbstractUser
 from django.urls.base import reverse
 from django.utils import timezone
 #from importlib._common import _
@@ -14,6 +14,9 @@ from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.db import models
 from django.utils.text import slugify
 from django.db.models.signals import pre_save
+from oscrypto._ffi import null
+
+
 
 # Create your models here.
 
@@ -134,6 +137,7 @@ class Mentor(models.Model):
     def __str__(self):
         return self.mentor_name
 
+
 class Course(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     course_name = models.CharField(max_length=200,unique=True)
@@ -220,6 +224,18 @@ class requirements(models.Model):
 
     def __str__(self):
         return self.points
+
+
+class UserCourse(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    paid = models.BooleanField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.user or ''
+
+
 class CartItem(models.Model):
     cart_id = models.CharField(max_length=500, blank=True)
     user = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='cart')
@@ -271,52 +287,7 @@ class Reviews(models.Model):
         return self.user
 
 
-class MyAccount1(BaseUserManager):
-    def create_user(self, first_name, last_name, email,  phone, address, state, country, password=None):
-        if not email:
-            raise ValueError('User must have an email address')
 
-        user = self.model(
-            email=self.normalize_email(email),
-            # username = username,
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone,
-            state=state,
-            country=country,
-            address=address,
-
-        )
-
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-
-class Reg_Mentor(AbstractBaseUser):
-    first_name = models.CharField(blank=True,null=True,max_length=50)
-    last_name = models.CharField(blank=True,null=True,max_length=50)
-    email = models.EmailField(max_length=50, unique=True,primary_key=True)
-    password = models.TextField(max_length=30)
-    phone = models.CharField(max_length=10)
-    address = models.CharField(max_length=100)
-    state = models.CharField(max_length=20)
-    country = models.CharField(max_length=20)
-    publish = models.DateTimeField(default=timezone.now)
-    date_joined = models.DateTimeField(auto_now_add=True)
-    last_login = models.DateTimeField(auto_now_add=True)
-    is_admin = models.BooleanField(default=False)
-    is_user = models.BooleanField(default=True)
-    is_active = models.BooleanField(default=True)
-    is_superadmin = models.BooleanField(default=False)
-    is_staff = models.BooleanField(default=True)
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'phone', 'address', 'state', 'country']
-
-    objects = MyAccount1()
-    def __str__(self):
-        return self.email
 
 
 class Quiz(models.Model):
@@ -349,3 +320,126 @@ class payment(models.Model):
 
     def __str__(self):
         return self.Cardholdername
+
+
+# class Student_Feedback(models.Model):
+#     user_id=models.ForeignKey(Account, on_delete=models.CASCADE, null=True,blank=True)
+#     feedback= models.TextField()
+#     feedback_reply = models.TextField()
+#     created_at= models.DateTimeField(auto_now_add=True,null=True)
+#     updated_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return self.user_id
+
+
+class Job(models.Model):
+    job_name = models.CharField(max_length=200,unique=True)
+    job_image=models.ImageField(upload_to='media/images')
+    job_salary = models.IntegerField(default=0)
+    job_type = models.CharField(max_length=20)
+    job_location = models.CharField(max_length=10)
+    slug = models.SlugField(default='', blank=True, max_length=500, null=True)
+    job_date = models.DateField(auto_now=True)
+    job_description = models.CharField(max_length=300,default=null)
+    job_responsibility = models.CharField(max_length=300,default=null)
+    job_qualifications = models.CharField(max_length=300,default=null)
+    applicant_name = models.CharField(max_length=50,default=null)
+    applicant_email = models.EmailField(max_length=30,default=null)
+    resume = models.FileField(upload_to='media/resumes/',default=null)
+    def __str__(self):
+        return self.job_name
+
+    def get_url(self):
+        return reverse("course_details",args={self.slug})
+
+
+class Reg_Mentor(AbstractBaseUser):
+    first_name = models.CharField(blank=True,null=True,max_length=50)
+    last_name = models.CharField(blank=True,null=True,max_length=50)
+    email = models.EmailField(max_length=50, unique=True,primary_key=True)
+    password = models.TextField(max_length=30)
+    phone = models.CharField(max_length=10)
+    address = models.CharField(max_length=100)
+    state = models.CharField(max_length=20)
+    country = models.CharField(max_length=20)
+    # publish = models.DateTimeField(default=timezone.now)
+    # required
+    date_joined = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(auto_now_add=True)
+    is_admin = models.BooleanField(default=False)
+    is_user = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    is_superadmin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'phone', 'address', 'state', 'country']
+    # REQUIRED_FIELDS = ['password']
+
+    objects = MyAccount()
+
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'
+
+    def __str__(self):
+        return self.first_name
+
+    def has_perm(self, perm, obj=None):
+        return self.is_admin
+
+    def has_module_perms(self, add_label):
+        return self.is_admin
+
+    def get_all_permissions(user=None):
+        if user.is_superadmin:
+            return set()
+
+
+class MyAccount1(BaseUserManager):
+    def create_user(self,company_name, company_email, company_phone,company_address, company_country, company_password=None):
+        if not company_email:
+            raise ValueError('User must have an email address')
+
+        user = self.model(
+            company_email=self.normalize_email(company_email),
+            # username = username,
+            company_name=company_name,
+            company_phone=company_phone,
+            company_country=company_country,
+            company_address=company_address,
+
+        )
+
+        user.set_password(company_password)
+        user.save(using=self._db)
+        return user
+
+
+
+class Reg_company(AbstractUser):
+    company_name = models.CharField(blank=True,null=True,max_length=50)
+    company_email = models.EmailField(max_length=50, unique=True,primary_key=True)
+    company_password = models.CharField(max_length=10)
+    company_phone = models.TextField(max_length=30)
+    company_address = models.CharField(max_length=100)
+    company_country = models.CharField(max_length=20)
+    publish = models.DateTimeField(default=timezone.now)
+    date_joined = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(auto_now_add=True)
+    is_admin = models.BooleanField(default=False)
+    is_user = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    is_superadmin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=True)
+
+    USERNAME_FIELD = 'company_email'
+    REQUIRED_FIELDS = ['company_name','company_phone ', 'company_address', 'company_email', 'company_country']
+
+    objects = MyAccount1()
+    def __str__(self):
+        return self.company_email
+
+
+
+

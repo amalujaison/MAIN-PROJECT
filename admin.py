@@ -2,8 +2,10 @@ import csv
 from django.contrib import admin
 from django.http import HttpResponse, response
 from .models import Account, Category, Course, Mentor, Reviews, Quiz, payment, Lesson, Video, requirements, \
-    what_you_learn
-from .views import Review
+    what_you_learn, UserCourse, Job
+
+
+#from .views import Review
 
 # from .models import Cart, CartItem
 
@@ -30,8 +32,10 @@ admin.site.register(Lesson)
 admin.site.register(Course, course_admin)
 admin.site.register(what_you_learn)
 admin.site.register(requirements)
-
-
+admin.site.register(UserCourse)
+admin.site.register(Quiz)
+admin.site.register(Job)
+admin.site.register(payment)
 # def export_details(modeladmin, request, queryset):
 #      response = HttpResponse(content_type='text/csv')
 #      response['Content-Disposition'] = 'attachment; filename="freecourses.csv"'
@@ -93,12 +97,12 @@ admin.site.register(Account,RegAdmin)
 #
 # admin.site.register(Category,CateAdmin)
 
-class PayAdmin(admin.ModelAdmin):
-    list_display = ['Cardholdername', 'AccountNo', 'Amount']
-    actions = [export_reg]
-
-
-admin.site.register(payment,PayAdmin)
+# class PayAdmin(admin.ModelAdmin):
+#     list_display = ['Cardholdername', 'AccountNo', 'Amount']
+#     actions = [export_reg]
+#
+#
+# admin.site.register(payment,PayAdmin)
 # @admin.register(Account)
 # class AccountAdmin(admin.ModelAdmin):
 #     search_fields = ("first_name__startswith", )

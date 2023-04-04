@@ -1,13 +1,20 @@
 import io
 from _sha256 import sha256
 from io import BytesIO
-
+import razorpay
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from django.contrib import auth, messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
-from elearnapp.models import Account, Category, Course, CartItem, Reviews, Reg_Mentor, Quiz, payment, Mentor, \
-    what_you_learn, requirements
+from django.template.context_processors import request
+
+from .models import Account, Category, Course, CartItem, Reviews, Quiz, payment, Mentor, \
+    what_you_learn, requirements, UserCourse, Job, Reg_company
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 from PIL import Image, ImageDraw, ImageFont
@@ -22,7 +29,14 @@ from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
 from xhtml2pdf import pisa
 from cart.cart import Cart
-#from hashlib import sha256
+import razorpay
+
+from elearning.settings import RAZORPAY_API_KEY, RAZORPAY_API_SECRET_KEY
+
+from .models import Reg_Mentor
+
+
+# from hashlib import sha256
 #
 # from django.contrib import messages
 # from django.shortcuts import render, redirect
@@ -42,7 +56,7 @@ def demo(request):
 
 
 def home1(request):
-    return render(request,"index.html")
+    return render(request, "index.html")
 
 
 def Home_mentor(request):
@@ -52,17 +66,20 @@ def Home_mentor(request):
     return render(request, "Home-mentor.html", {'course': course, 'categories': categories, 'review': review})
 
 
-
 def LOGIN(request):
-    return render(request,"LOGIN.html")
+    return render(request, "LOGIN.html")
 
 
 def base(request):
-    return render(request,"base.html")
+    return render(request, "base.html")
+
+
 #
 #
 def REGISTRATION(request):
     return render(request, "REGISTRATION.html")
+
+
 #
 #
 
@@ -71,7 +88,8 @@ def Home(request):
     course = Course.objects.all()
     categories = Category.objects.all()
     review = Reviews.objects.all()
-    return render(request, "Home.html", {'course': course, 'categories': categories, 'review':review})
+    return render(request, "Home.html", {'course': course, 'categories': categories, 'review': review})
+
 
 #
 # def register(request):
@@ -117,50 +135,60 @@ def Home(request):
 def home(request):
     if 'email' in request.session:
         email = request.session['email']
-        return render(request,'Home.html',{'email':email})
+        return render(request, 'Home.html', {'email': email})
     return redirect(login)
+
+
 #
 #
 def about1(request):
-    return render(request,"about-1.html")
+    return render(request, "about-1.html")
 
 
 def about2(request):
-    return render(request,"about-2.html")
+    return render(request, "about-2.html")
 
 
 def userprofile(request):
-    return render(request,"user-profile.html")
+    return render(request, "user-profile.html")
+
 
 def reports(request):
-    return render(request,"Reports.html")
+    return render(request, "Reports.html")
 
 
 def activity(request):
-    return render(request,"list-view-calendar.html")
+    return render(request, "list-view-calendar.html")
 
 
 def Messages(request):
-    return render(request,"mailbox.html")
+    return render(request, "mailbox.html")
 
 
 def course(request):
-    return render(request,"paid courses.html")
+    return render(request, "paid courses.html")
 
-def checkout(request,slug):
+
+def checkout(request, slug):
     course = Course.objects.get(slug=slug)
-    return render(request,"check out1.html")
-
-
+    if course.price == 0:
+        course = UserCourse(
+            user=request.user,
+            course=course,
+        )
+        course.save()
+        return redirect('Home')
+    return render(request, "checkout/check out1.html")
 
 
 def category(request):
-    obj=category.objects.all()
-    return render(request,"courses-details.html",{'result':obj})
+    obj = category.objects.all()
+    return render(request, "courses-details.html", {'result': obj})
+
 
 def course_detail(request):
-    obj=Course.objects.all()
-    return render(request,"courses-details.html",{'result':obj})
+    obj = Course.objects.all()
+    return render(request, "courses-details.html", {'result': obj})
 
 
 # def error(request):
@@ -171,7 +199,6 @@ def course_detail(request):
 # def javaadv(request):
 #     obj=course.objects.all()
 #     return render(request,"java1.html",{'result':obj})
-
 
 
 # Create your views here.
@@ -225,7 +252,8 @@ def user_reg(request):
         if Account.objects.filter(email=email).exists():
             messages.error(request, 'Email already exists')
             return redirect('user_reg')
-        user = Account.objects.create_user(first_name=first_name, last_name=last_name, email=email, phone=phone, address=address, state=state, country=country,
+        user = Account.objects.create_user(first_name=first_name, last_name=last_name, email=email, phone=phone,
+                                           address=address, state=state, country=country,
                                            password=password)
         user.is_user = True
         user.save()
@@ -237,6 +265,7 @@ def user_reg(request):
 def logout(request):
     auth.logout(request)
     return redirect('demo')
+
 
 @login_required
 def changepassword(request):
@@ -327,44 +356,45 @@ def resetPassword(request):
 
 def courses(request):
     obj = Course.objects.all()
-    return render(request,"paid courses.html",{'result':obj})
+    return render(request, "paid courses.html", {'result': obj})
 
 
 def courses_mentor(request):
     obj = Course.objects.all()
-    return render(request,"paid courses-mentor.html",{'result':obj})
+    return render(request, "paid courses-mentor.html", {'result': obj})
 
-def course_details(request,course_slug):
+
+def course_details(request, course_slug):
     single = Course.objects.get(slug=course_slug)
     point = what_you_learn.objects.all()
     req = requirements.objects.all()
     context = {
         'result': single,
-        'results':point,
-        'res':req,
+        'results': point,
+        'res': req,
 
     }
-    return render(request, "course-single-v4.html",context)
-
+    return render(request, "course-single-v4.html", context)
 
 
 # Cart functions
 @login_required
 def add_cart(request, id):
     if 'email' in request.session:
-        item=Course.objects.get(id=id)
-        user=request.session['email']
+        item = Course.objects.get(id=id)
+        user = request.session['email']
         if CartItem.objects.filter(user_id=user, cart_id=item).exists():
 
             return redirect('view_cart')
         else:
-            price= item.price
-            new_cart=CartItem(user_id=user, cart_id=item, price=price)
+            price = item.price
+            new_cart = CartItem(user_id=user, cart_id=item, price=price)
             new_cart.save()
 
             return redirect('view_cart')
     messages.success(request, "Product is added in your cart.")
-    return render(LOGIN)
+    return render(request, 'Cart/Cart1.html')
+
 
 #
 # Cart Quentity Plus Settings
@@ -383,11 +413,11 @@ def view_cart(request):
         cart_product = [p for p in CartItem.objects.all() if p.user == user]
         if cart_product:
             for p in cart_product:
-                subtotal = p.price+amount
+                subtotal = p.price + amount
             messages.warning(request, "This product is added to your cart")
-            return render(request, 'Cart/cart1.html', {'cart': cart,'subtotal': subtotal})
+            return render(request, 'Cart/Cart1.html', {'cart': cart, 'subtotal': subtotal})
         else:
-            return render(request, 'Cart/cart1.html')
+            return render(request, 'Cart/Cart1.html')
 
 
 # Remove Items From Cart
@@ -407,6 +437,7 @@ def de_cart(request, id):
 def profile(request):
     return render(request, "user-profile.html")
 
+
 # def review(request):
 #     return render(request,"mailbox-compose.html")
 
@@ -415,7 +446,7 @@ def update_profile(request):
     if request.method == "POST":
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
-        email = request.POST.get('email')
+        # email = request.POST.get('email')
         phone = request.POST.get('phone')
         address = request.POST.get('address')
         state = request.POST.get('state')
@@ -425,7 +456,7 @@ def update_profile(request):
         user = Account.objects.get(email=user_email)
         user.first_name = first_name
         user.last_name = last_name
-        user.email = email
+        # user.email = email
         user.phone = phone
         user.address = address
         user.state = state
@@ -444,7 +475,7 @@ def search_course(request):
     context = {
         'course': course,
     }
-    return render(request,'search.html',context)
+    return render(request, 'search.html', context)
 
 
 # def usercertificate(request):
@@ -500,26 +531,60 @@ def usercertificate(request):
     carts = CartItem.objects.filter(user=request.user, purchase=False)
 
     if carts.exists():
-
         return render_to_pdf('certificate.html',
                              {'customerName': request.user.first_name, 'customerNamelast': request.user.last_name,
-                              'customerEmail': request.user.email, 'carts': carts,'posts': posts})
+                              'customerEmail': request.user.email, 'carts': carts, 'posts': posts})
 
     return render_to_pdf('certificate.html', {'posts': posts})
 
 
 def certificate(request):
-    course= Course.objects.all()
-    return render(request,'certificate.html',
-                         {'customerName': request.user.first_name, 'customerNamelast': request.user.last_name,
-                          'customerEmail': request.user.email})
+    course = Course.objects.all()
+    return render(request, 'certificate.html',
+                  {'customerName': request.user.first_name, 'customerNamelast': request.user.last_name,
+                   'customerEmail': request.user.email})
+
 
 def test(request):
-    return render(request,"TEST.html")
+    return render(request, "TEST.html")
+
+
+client = razorpay.Client(auth=(RAZORPAY_API_KEY, RAZORPAY_API_SECRET_KEY))
+
+
+# def payments(request):
+#     if request.method == "POST":
+#      order_amount = 100
+#      order_currency = "INR"
+#      payment_order = client.order.create(dict(amount=order_amount,currency=order_currency,payment_capture =1))
+#      payment_order_id = payment_order['id']
+#      Cardholdername = request.POST.get('name')
+#      AccountNo = request.POST.get('number')
+#      Expiry_date = request.POST.get('exp')
+#      cvv = request.POST.get('cvv')
+#      Amount = request.POST.get('amount')
+#      user_email = request.user.email
+#      users = Account.objects.get(email=user_email)
+#      context = {
+#                  'Cardholdername':Cardholdername,
+#                  'AccountNo':AccountNo,
+#                  'Expiry_date':Expiry_date,
+#                  'cvv':cvv,
+#                  'Amount':Amount,
+#                  'user':users,
+#                  'api_key' :RAZORPAY_API_KEY,
+#                  'order_id' :payment_order_id,
+#                      }
+#     return render(request,context,"payment.html")
 
 
 def payments(request):
+    context = {}
     if request.method == "POST":
+        order_amount = 100
+        order_currency = "INR"
+        payment_order = client.order.create(dict(amount=order_amount, currency=order_currency, payment_capture=1))
+        payment_order_id = payment_order['id']
         Cardholdername = request.POST.get('name')
         AccountNo = request.POST.get('number')
         Expiry_date = request.POST.get('exp')
@@ -527,20 +592,27 @@ def payments(request):
         Amount = request.POST.get('amount')
         user_email = request.user.email
         users = Account.objects.get(email=user_email)
-        user = payment(Cardholdername=Cardholdername,AccountNo=AccountNo,Expiry_date=Expiry_date,cvv=cvv,Amount=Amount,user=users)
-        user.save()
-        messages.info(request, 'Your payment has been successfully send..!!')
-        return redirect('payments')
-    return render(request,"payment.html")
+        context.update({
+            'Cardholdername': Cardholdername,
+            'AccountNo': AccountNo,
+            'Expiry_date': Expiry_date,
+            'cvv': cvv,
+            'Amount': Amount,
+            'user': users,
+            'api_key': RAZORPAY_API_KEY,
+            'order_id': payment_order_id,
+        })
+    return render(request, "payment.html", context)
+
 
 def Review(request):
     if request.method == "POST":
         stars = request.POST.get('stars')
-        review= request.POST.get('review')
+        review = request.POST.get('review')
         user_email = request.user.email
 
         users = Account.objects.get(email=user_email)
-        user = Reviews(stars=stars,review=review,user=users)
+        user = Reviews(stars=stars, review=review, user=users)
         user.save()
         messages.info(request, 'Your review has been successfully send..!!')
         return redirect('Review')
@@ -588,29 +660,31 @@ def Review(request):
 #         else:
 #             messages.error(request, 'Invalid Credentials')
 #             return redirect('mentor_login')
-#     return render(request, 'LOGIN-Mentor.html')
+#     return render(request, 'LOGIN-company.html')
 
-def mentor_registration(request):
-    if request.method == 'POST':
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        email = request.POST.get('email')
-        # username = email.split('@')[0]
-        phone = request.POST.get('phone')
-        password = request.POST.get('password')
-        address = request.POST.get('address')
-        state = request.POST.get('state')
-        country = request.POST.get('country')
-        # if mentor_reg.objects.filter(email=email).exists():
-        #     messages.error(request, 'Email already exists')
-        #     return redirect('user_reg')
-        user = Reg_Mentor.objects.create_user(first_name=first_name, last_name=last_name, email=email, phone=phone, address=address, state=state, country=country,
-                                           password=password)
-        user.is_staff = True
-        user.save()
-        messages.info(request, 'Thank you for registering with us. Please Login')
-        return redirect('LOGIN')
-    return render(request, 'REGISTRATION-Mentor.html')
+# def mentor_registration(request):
+#     if request.method == 'POST':
+#         first_name = request.POST.get('first_name')
+#         last_name = request.POST.get('last_name')
+#         email = request.POST.get('email')
+#         # username = email.split('@')[0]
+#         phone = request.POST.get('phone')
+#         password = request.POST.get('password')
+#         address = request.POST.get('address')
+#         state = request.POST.get('state')
+#         country = request.POST.get('country')
+#         # if mentor_reg.objects.filter(email=email).exists():
+#         #     messages.error(request, 'Email already exists')
+#         #     return redirect('user_reg')
+#         user = Reg_mentor.objects.create_user(first_name=first_name, last_name=last_name, email=email, phone=phone,
+#                                               address=address, state=state, country=country,
+#                                               password=password)
+#         user.is_staff = True
+#         user.save()
+#         messages.info(request, 'Thank you for registering with us. Please Login')
+#         return redirect('LOGIN')
+#     return render(request, 'REGISTRATION-Mentor.html')
+
 
 def mentor_login(request):
     if request.method == 'POST':
@@ -633,7 +707,8 @@ def mentor_login(request):
         else:
             messages.error(request, 'Invalid Credentials')
             return redirect('mentor_login')
-    return render(request, 'LOGIN-Mentor.html')
+    return render(request, 'LOGIN-mentor.html')
+
 
 def update_profilementor(request):
     if request.method == "POST":
@@ -703,7 +778,7 @@ def quiz(request):
         return render(request, 'Quiz.html', context)
 
 
-def quize(request,id):
+def quize(request, id):
     single = Quiz.objects.get(id=id)
 
     context = {
@@ -713,9 +788,9 @@ def quize(request,id):
     return render(request, "Quiz.html", context)
 
 
+
 def company_registration(request):
     if request.method == 'POST':
-        company_regno = request.POST.get('first_name')
         company_name = request.POST.get('last_name')
         company_email = request.POST.get('email')
         company_phone = request.POST.get('phone')
@@ -725,33 +800,150 @@ def company_registration(request):
         # if mentor_reg.objects.filter(email=email).exists():
         #     messages.error(request, 'Email already exists')
         #     return redirect('user_reg')
-        user = Reg_Mentor.objects.create_user(company_regno=company_regno, company_name=company_name, company_email=company_email, company_phone=company_phone,company_address=company_address, company_country=company_country,
-                                           company_password=company_password)
-        user.is_staff = True
+        user = Reg_company.objects.create_user(company_name=company_name, company_email=company_email,company_password=company_password, company_phone=company_phone,company_address=company_address, company_country=company_country)
+        user.is_user = True
         user.save()
         messages.info(request, 'Thank you for registering with us. Please Login')
-        return redirect('LOGIN')
-    return render(request, 'REGISTRATION-Mentor.html')
+        return redirect('company_login')
+    return render(request, 'REGISTRATION-company.html')
+
 
 def company_login(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        print(email, password)
-        user = auth.authenticate(email=email, password=password)
-        print(user)
+        company_email = request.POST.get('email')
+        company_password = request.POST.get('password')
+        print(company_email, company_password)
 
+        user = auth.authenticate(company_email=company_email, company_password=company_password)
+        print(user)
         if user is not None:
             auth.login(request, user)
             # save email in session
-            request.session['email'] = email
+            request.session['email'] = company_email
 
-            if user.is_user:
-                return redirect('Home_mentor')
-
+            if user.is_active:
+                return redirect('forms')
             else:
-                return redirect('mentor_registration')
+                return redirect('company_registration')
         else:
-            messages.error(request, 'Invalid Credentials')
-            return redirect('mentor_login')
-    return render(request, 'LOGIN-Mentor.html')
+            messages.error(request, 'Invalid email or password.')
+            return redirect('company_login')
+    return render(request, 'LOGIN-company.html')
+
+
+
+# def mentor_login(request):
+#     if request.method == 'POST':
+#         email = request.POST.get('email')
+#         password = request.POST.get('password')
+#         print(email, password)
+#         user = auth.authenticate(email=email, password=password)
+#         print(user)
+#
+#         if user is not None:
+#             auth.login(request, user)
+#             # save email in session
+#             request.session['email'] = email
+#
+#             if user.is_user:
+#                 return redirect('Home')
+#
+#             else:
+#                 return redirect('company_registration')
+#         else:
+#             messages.error(request, 'Invalid Credentials')
+#             return redirect('company_login')
+#     return render(request, 'LOGIN-company.html')
+#
+def Learner_dashboard(request):
+    return render(request, 'dashboard_user.html')
+
+
+def doubts(request):
+    return render(request, 'doubts.html')
+
+
+@csrf_exempt
+def razorpay_payment(request):
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        client = razorpay.Client(auth=('your_key', 'your_secret'))
+        payment = client.order.create({'amount': amount, 'currency': 'INR'})
+        return JsonResponse(payment)
+
+
+@csrf_exempt
+def razorpay_confirm(request):
+    if request.method == 'POST':
+        payment_id = request.POST.get('razorpay_payment_id')
+        client = razorpay.Client(auth=('your_key', 'your_secret'))
+        payment = client.order.fetch(payment_id)
+        if payment['status'] == 'authorized':
+            # Enroll the user in the course
+            # ...
+            return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'failure'})
+
+
+def job_list(request):
+    obj1 = Job.objects.all()
+    return render(request, "job-list.html", {'result1': obj1})
+
+
+def job_index(request):
+    return render(request, 'index-job.html')
+
+
+def job_detail(request):
+    return render(request, 'job-detail.html')
+
+
+def company_adminpanel(request):
+    return render(request, 'add_jobs.html')
+
+
+def forms(request):
+    return render(request, 'forms.html')
+
+
+def Job_add(request):
+    if request.method == "POST":
+        job_name = request.POST.get('jobname')
+        job_image = request.FILES.get('image')
+        job_location = request.POST.get('joblocation')
+        job_type = request.POST.get('jobtype')
+        job_salary = request.POST.get('jobsalary')
+        job_date = request.POST.get('date')
+        job_description = request.POST.get('jobdescription')
+        job_responsibility = request.POST.get('jobrequirements')
+        job_qualifications = request.POST.get('jobqualification')
+
+        jobs = Job(job_name=job_name, job_image=job_image, job_location=job_location, job_type=job_type,
+                   job_salary=job_salary, job_date=job_date, job_description=job_description,
+                   job_responsibility=job_responsibility, job_qualifications=job_qualifications)
+        jobs.save()
+        messages.info(request, 'Job added successfully..!!')
+        return redirect('Job_add')
+    return render(request, 'forms.html')
+
+
+# def mentor_registration(request):
+#     if request.method == 'POST':
+#         company_name = request.POST.get('last_name')
+#         company_email = request.POST.get('email')
+#         company_phone = request.POST.get('phone')
+#         company_password = request.POST.get('password')
+#         company_address = request.POST.get('address')
+#         company_country = request.POST.get('country')
+#         # if mentor_reg.objects.filter(email=email).exists():
+#         #     messages.error(request, 'Email already exists')
+#         #     return redirect('user_reg')
+#         user = Reg_company.objects.create_user(company_name=company_name, company_email=company_email,
+#                                                company_phone=company_phone, company_address=company_address,
+#                                                company_country=company_country,
+#                                                company_password=company_password)
+#         user.is_user = True
+#         user.save()
+#         messages.info(request, 'Thank you for registering with us. Please Login')
+#         return redirect('LOGIN')
+#     return render(request, 'REGISTRATION-company.html')
