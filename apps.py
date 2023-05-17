@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class ElearnappConfig(AppConfig):
+class PaymentConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'elearnapp'
+    name = 'LearnmateEdu'

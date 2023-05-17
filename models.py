@@ -36,14 +36,28 @@ from oscrypto._ffi import null
 #         return self.email
 #
 #
-# class user_log(models.Model):
-#     email = models.EmailField(max_length=20, primary_key=True, unique=True)
-#     password = models.TextField(max_length=30)
-#     publish = models.DateTimeField(default=timezone.now)
-#
-#     def __str__(self):
-#         return self.email
+class user_log(models.Model):
+    email = models.EmailField(max_length=20, primary_key=True, unique=True)
+    password = models.TextField(max_length=30)
+    publish = models.DateTimeField(default=timezone.now)
 
+    def __str__(self):
+        return self.email
+
+class mentor_log(models.Model):
+    email = models.EmailField(max_length=20, primary_key=True, unique=True)
+    password = models.TextField(max_length=30)
+    publish = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return self.email
+class company_log(models.Model):
+    email = models.EmailField(max_length=20, primary_key=True, unique=True)
+    password = models.TextField(max_length=30)
+    publish = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return self.email
 class MyAccount(BaseUserManager):
     def create_user(self, first_name, last_name, email,  phone, address, state, country, password=None):
         if not email:
@@ -138,27 +152,34 @@ class Mentor(models.Model):
         return self.mentor_name
 
 
+class Author(models.Model):
+    author_profile = models.ImageField(upload_to='images')
+    name = models.CharField(max_length=200, null=True)
+    profession= models.CharField(max_length=200, null=True)
+    about_author = models.TextField()
+
+    def __str__(self):
+        return self.name
+
 class Course(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     course_name = models.CharField(max_length=200,unique=True)
     image=models.ImageField(upload_to='images')
-    price = models.CharField(max_length=10, default=0)
+    price = models.IntegerField()
     description = models.TextField(max_length=500)
     level = models.CharField(max_length=20)
     language = models.CharField(max_length=30)
     students = models.IntegerField()
-    mentor = models.ForeignKey(Mentor, on_delete=models.CASCADE)
+    mentor = models.ForeignKey(Author,on_delete=models.CASCADE)
     slug = models.SlugField(default='', blank=True, max_length=500, null=True)
     publish = models.DateTimeField(default=timezone.now)
+    completed_by = models.ManyToManyField(Account, blank=True)
 
     def __str__(self):
         return self.course_name
 
     def get_url(self):
         return reverse("course_details",args={self.slug})
-
-
-
 
 
 def create_slug(instance, new_slug=None):
@@ -197,6 +218,7 @@ class Lesson(models.Model):
     def __str__(self):
         return self.name
 
+
 class Video(models.Model):
     serial_number = models.IntegerField(null=True)
     thumbnail = models.ImageField(upload_to="media",null=True)
@@ -218,22 +240,13 @@ class what_you_learn(models.Model):
     def __str__(self):
         return self.points
 
+
 class requirements(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     points = models.CharField(max_length=500)
 
     def __str__(self):
         return self.points
-
-
-class UserCourse(models.Model):
-    user = models.ForeignKey(Account, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    paid = models.BooleanField(default=0)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.user or ''
 
 
 class CartItem(models.Model):
@@ -245,6 +258,7 @@ class CartItem(models.Model):
     updated = models.DateTimeField(auto_now=True)
     price = models.IntegerField(default=0)
     image = models.ImageField(upload_to='images',null=True)
+
     def __str__(self):
         return f'{self.item}'
 
@@ -253,29 +267,29 @@ class CartItem(models.Model):
         return sum(price)
 
 
-class Order(models.Model):
-    method = (
-        ('EMI', "EMI"),
-        ('ONLINE', "Online"),
-    )
-    orderitems = models.ManyToManyField(CartItem)
-    user = models.ForeignKey(Account, on_delete=models.CASCADE)
-    ordered = models.BooleanField(default=False)
-    phone = models.CharField(max_length=10, null = False, default='0')
-    total = models.DecimalField(max_digits=10, default=0, decimal_places=2, verbose_name='INR ORDER TOTAL')
-    emailAddress = models.EmailField(max_length=250, blank=True)
-    created = models.DateTimeField(auto_now_add=True)
-    payment_id = models.CharField(max_length=100, null=True)
-    order_id = models.CharField(max_length=100, null=True)
-
-    def get_totals(self):
-        total = 0
-        for order_item in self.orderitems.all():
-            total += float(order_item.get_total())
-        # if self.coupon:
-        #     total -= self.coupon.amount
-        return total
-
+# class Order(models.Model):
+#     method = (
+#         ('EMI', "EMI"),
+#         ('ONLINE', "Online"),
+#     )
+#     orderitems = models.ManyToManyField(CartItem)
+#     user = models.ForeignKey(Account, on_delete=models.CASCADE)
+#     ordered = models.BooleanField(default=False)
+#     phone = models.CharField(max_length=10, null = False, default='0')
+#     total = models.DecimalField(max_digits=10, default=0, decimal_places=2, verbose_name='INR ORDER TOTAL')
+#     emailAddress = models.EmailField(max_length=250, blank=True)
+#     created = models.DateTimeField(auto_now_add=True)
+#     payment_id = models.CharField(max_length=100, null=True)
+#     order_id = models.CharField(max_length=100, null=True)
+#
+#     def get_totals(self):
+#         total = 0
+#         for order_item in self.orderitems.all():
+#             total += float(order_item.get_total())
+#         # if self.coupon:
+#         #     total -= self.coupon.amount
+#         return total
+#
 
 class Reviews(models.Model):
     user = models.ForeignKey(Account, on_delete=models.CASCADE)
@@ -290,36 +304,21 @@ class Reviews(models.Model):
 
 
 
-class Quiz(models.Model):
-    quiz_course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True,blank=True)
-    QuestionNo = models.CharField(max_length=100)
-    Question = models.CharField(max_length=100)
-    Option1 = models.CharField(max_length=100)
-    Option2 = models.CharField(max_length=100)
-    Option3 = models.CharField(max_length=100)
-    Option4 = models.CharField(max_length=100)
-    Corrans = models.CharField(max_length=100)
 
 
-    def __str__(self):
-        return self.QuestionNo
 
-    def get_url(self):
-        return reverse("quize", args={self.id})
-
-
-class payment(models.Model):
-    user=models.ForeignKey(Account, on_delete=models.CASCADE, null=True,blank=True)
-    Cardholdername= models.CharField(blank=True,null=True,max_length=50)
-    AccountNo= models.CharField(max_length=100)
-    Expiry_date = models.CharField(max_length=100)
-    cvv = models.CharField(max_length=100)
-    course=models.ForeignKey(Course, on_delete=models.CASCADE, null=True,blank=True)
-    Amount=models.CharField(max_length=100,null=True)
-    publish = models.DateTimeField(default=timezone.now)
-
-    def __str__(self):
-        return self.Cardholdername
+# class LearnmateEdu(models.Model):
+#     user=models.ForeignKey(Account, on_delete=models.CASCADE, null=True,blank=True)
+#     Cardholdername= models.CharField(blank=True,null=True,max_length=50)
+#     AccountNo= models.CharField(max_length=100)
+#     Expiry_date = models.CharField(max_length=100)
+#     cvv = models.CharField(max_length=100)
+#     course=models.ForeignKey(Course, on_delete=models.CASCADE, null=True,blank=True)
+#     Amount=models.CharField(max_length=100,null=True)
+#     publish = models.DateTimeField(default=timezone.now)
+#
+#     def __str__(self):
+#         return self.Cardholdername
 
 
 # class Student_Feedback(models.Model):
@@ -329,8 +328,7 @@ class payment(models.Model):
 #     created_at= models.DateTimeField(auto_now_add=True,null=True)
 #     updated_at = models.DateTimeField(auto_now_add=True, null=True)
 
-    def __str__(self):
-        return self.user_id
+
 
 
 class Job(models.Model):
@@ -403,7 +401,6 @@ class MyAccount1(BaseUserManager):
 
         user = self.model(
             company_email=self.normalize_email(company_email),
-            # username = username,
             company_name=company_name,
             company_phone=company_phone,
             company_country=company_country,
@@ -416,11 +413,10 @@ class MyAccount1(BaseUserManager):
         return user
 
 
-
 class Reg_company(AbstractUser):
     company_name = models.CharField(blank=True,null=True,max_length=50)
     company_email = models.EmailField(max_length=50, unique=True,primary_key=True)
-    company_password = models.CharField(max_length=10)
+    password = models.CharField(max_length=100,default=True)
     company_phone = models.TextField(max_length=30)
     company_address = models.CharField(max_length=100)
     company_country = models.CharField(max_length=20)
@@ -434,12 +430,150 @@ class Reg_company(AbstractUser):
     is_staff = models.BooleanField(default=True)
 
     USERNAME_FIELD = 'company_email'
-    REQUIRED_FIELDS = ['company_name','company_phone ', 'company_address', 'company_email', 'company_country']
+    REQUIRED_FIELDS = ['company_name', 'company_phone ', 'company_address', 'company_email', 'company_country']
 
     objects = MyAccount1()
     def __str__(self):
         return self.company_email
 
 
+class UserCourse(models.Model):
+    user = models.ForeignKey(Account, null = False , on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, null = False , on_delete=models.CASCADE)
+    date = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return self.course or ''
+
+
+class Payment(models.Model):
+    order_id = models.CharField(max_length= 50 , null = False,default='')
+    payment_id = models.CharField(max_length= 50,default='')
+    user_course = models.ForeignKey(UserCourse, null = True, blank = True ,  on_delete=models.CASCADE)
+    user = models.ForeignKey(Account,  on_delete=models.CASCADE,default='')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,default='')
+    date = models.DateTimeField(default=timezone.now)
+    status = models.BooleanField(default=False)
+
+
+class Order(models.Model):
+    user = models.ForeignKey(Account,on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,default=0)
+    order_id = models.CharField(max_length=100,default=0)
+    amount = models.IntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Order {self.order_id} by {self.user.email} for {self.course.course_name} ({self.amount} INR)"
+
+
+class VideoProgress(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    video = models.ForeignKey(Video, on_delete=models.CASCADE)
+    watched = models.BooleanField(default=False)
+
+    def get_absolute_url(self):
+        return reverse('video_detail', args=[str(self.video.course.id), str(self.video.id)])
+class UserProgress(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    video = models.ForeignKey(Video, on_delete=models.CASCADE)
+    watched = models.BooleanField(default=False)
+class Certificate(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    completed_On = models.DateTimeField(auto_now_add=True)
+    certificate_image = models.ImageField(upload_to='certificates/')
+
+    def __str__(self):
+        return self.course
+
+class CourseMaterial(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,default='')
+    title = models.CharField(max_length=100)
+    file = models.FileField(upload_to='media/coursematerials/')
+
+    def __str__(self):
+        return self.course
+
+class Course_material(models.Model):
+    course = models.CharField(max_length=100)
+    title = models.CharField(max_length=100)
+    file = models.FileField(upload_to='media/coursematerials/')
+
+class Quiz_save(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,primary_key=True,unique=True)
+    question1 = models.CharField(max_length=255,null=True)
+    answer1 = models.CharField(max_length=255,null=True)
+    question2 = models.CharField(max_length=255, null=True)
+    answer2 = models.CharField(max_length=255, null=True)
+    question3 = models.CharField(max_length=255, null=True)
+    answer3 = models.CharField(max_length=255, null=True)
+    question4 = models.CharField(max_length=255, null=True)
+    answer4 = models.CharField(max_length=255, null=True)
+
+    def __str__(self):
+        return self.course
+
+class Apply_job(models.Model):
+    job = models.ForeignKey(Job, on_delete=models.CASCADE,default='',null=True)
+    applicant_name = models.CharField(max_length=50,default=null)
+    applicant_email = models.EmailField(max_length=30,default=null)
+    resume = models.FileField(upload_to='resumes',default=null)
+    def __str__(self):
+        return self.job
+
+class Enrollment(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.course
+
+class Save_quiz(models.Model):
+    course_name = models.ForeignKey(Course, on_delete=models.CASCADE,unique=True,default='')
+    question1 = models.CharField(max_length=255,null=True)
+    answer1 = models.CharField(max_length=255,null=True)
+    question2 = models.CharField(max_length=255, null=True)
+    answer2 = models.CharField(max_length=255, null=True)
+    question3 = models.CharField(max_length=255, null=True)
+    answer3 = models.CharField(max_length=255, null=True)
+    question4 = models.CharField(max_length=255, null=True)
+    answer4 = models.CharField(max_length=255, null=True)
+
+    def __str__(self):
+        return self.course
+
+class table_quiz(models.Model):
+    course = models.OneToOneField(Course, on_delete=models.CASCADE,default='')
+    question1 = models.CharField(max_length=255, null=True)
+    answer1 = models.CharField(max_length=255, null=True)
+    question2 = models.CharField(max_length=255, null=True)
+    answer2 = models.CharField(max_length=255, null=True)
+    question3 = models.CharField(max_length=255, null=True)
+    answer3 = models.CharField(max_length=255, null=True)
+    question4 = models.CharField(max_length=255, null=True)
+    answer4 = models.CharField(max_length=255, null=True)
+
+    def __str__(self):
+        return self.course
+
+# class Quiz(models.Model):
+#
+#     Question = models.CharField(max_length=100)
+#     Option1 = models.CharField(max_length=100)
+#     Option2 = models.CharField(max_length=100)
+#     Option3 = models.CharField(max_length=100)
+#     Option4 = models.CharField(max_length=100)
+#     Corrans = models.CharField(max_length=100)
+#
+#
+#     def __str__(self):
+#         return self.QuestionNo
+
+class QuizResult(models.Model):
+    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(table_quiz, on_delete=models.CASCADE)
+    score = models.IntegerField()
+    percent = models.DecimalField(max_digits=5, decimal_places=2,default=1)
 

@@ -31,8 +31,12 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'elearnapp',
-    'jazzmin',
+    'LearnmateEdu',
+    'chat',
+    'channels',
+    'admin_interface',
+    'colorfield',
+    # 'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -73,7 +77,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'elearning.wsgi.application'
+ASGI_APPLICATION = 'elearning.asgi.application'
 
 
 # Database
@@ -82,7 +86,7 @@ WSGI_APPLICATION = 'elearning.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'elearningg',
+        'NAME': 'LearnmateEdu',
         'USER': 'postgres',
         'PASSWORD': 'elearn',
         'HOST': 'localhost',
@@ -122,12 +126,14 @@ USE_I18N = True
 
 USE_TZ = True
 
-AUTH_USER_MODEL = 'elearnapp.Account'
+AUTH_USER_MODEL = 'LearnmateEdu.Account'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_URL = 'static/'
 
+RAZORPAY_API_KEY = 'rzp_test_90uPhFCRihliRL'
+RAZORPAY_API_SECRET_KEY = 'D8btZeNNOUUYzUGGRH27OGYp'
 
 STATICFILES_DIRS = [os.path.join('static')]
 STATIC_ROOT = os.path.join('assets')

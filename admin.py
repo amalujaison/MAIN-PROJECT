@@ -1,17 +1,19 @@
 import csv
+
 from django.contrib import admin
-from django.http import HttpResponse, response
-from .models import Account, Category, Course, Mentor, Reviews, Quiz, payment, Lesson, Video, requirements, \
-    what_you_learn, UserCourse, Job
+from django.http import HttpResponse
+
+from .models import Account, Category, Course, Mentor, Reviews, Lesson, Video, requirements, Job, Payment, \
+    UserCourse, Author, Certificate
 
 
 #from .views import Review
 
-# from .models import Cart, CartItem
 
 
-class What_you_learn_TabularInline(admin.TabularInline):
-    model = what_you_learn
+
+# class What_you_learn_TabularInline(admin.TabularInline):
+#     model = what_you_learn
 
 
 class Requirements_TabularInline(admin.TabularInline):
@@ -23,19 +25,20 @@ class Video_TabularInline(admin.TabularInline):
 
 
 class course_admin(admin.ModelAdmin):
-    inlines = (Video_TabularInline, What_you_learn_TabularInline, Requirements_TabularInline)
+    inlines = (Video_TabularInline, Requirements_TabularInline)
 
 
 admin.site.register(Category)
 admin.site.register(Reviews)
 admin.site.register(Lesson)
 admin.site.register(Course, course_admin)
-admin.site.register(what_you_learn)
 admin.site.register(requirements)
-admin.site.register(UserCourse)
-admin.site.register(Quiz)
+admin.site.register(Video)
+admin.site.register(Author)
+# admin.site.register(Quiz)
 admin.site.register(Job)
-admin.site.register(payment)
+admin.site.register(Certificate)
+
 # def export_details(modeladmin, request, queryset):
 #      response = HttpResponse(content_type='text/csv')
 #      response['Content-Disposition'] = 'attachment; filename="freecourses.csv"'
@@ -79,11 +82,11 @@ class RegAdmin(admin.ModelAdmin):
 admin.site.register(Account,RegAdmin)
 # def export_pay(modeladmin, request, queryset):
 #     response = HttpResponse(content_type='text/csv')
-#     response['Content-Disposition'] = 'attachment; filename="payment.csv"'
+#     response['Content-Disposition'] = 'attachment; filename="LearnmateEdu.csv"'
 #     writer = csv.writer(response)
 #     writer.writerow(['Name', 'Account No', 'Amount'])
-#     payment = queryset.values_list('Cardholdername', 'AccountNo', 'Amount')
-#     for i in payment:
+#     LearnmateEdu = queryset.values_list('Cardholdername', 'AccountNo', 'Amount')
+#     for i in LearnmateEdu:
 #         writer.writerow(i)
 #     return response
 #
@@ -102,7 +105,7 @@ admin.site.register(Account,RegAdmin)
 #     actions = [export_reg]
 #
 #
-# admin.site.register(payment,PayAdmin)
+# admin.site.register(LearnmateEdu,PayAdmin)
 # @admin.register(Account)
 # class AccountAdmin(admin.ModelAdmin):
 #     search_fields = ("first_name__startswith", )
